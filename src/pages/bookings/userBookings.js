@@ -11,6 +11,7 @@ import { Fetchdata } from "../../components/lib/handleFetch/FetchData";
 import { toastDisplay } from "../../components/lib/functions";
 import { Toaster } from "react-hot-toast";
 import LoadingBar from "react-top-loading-bar";
+import { gsap } from "gsap"; // Import GSAP for animations
 
 const UserBooking = () => {
   const loadProgress = useRef(null);
@@ -36,7 +37,7 @@ const UserBooking = () => {
         }
 
         if (result.message) {
-          toastDisplay(result.message, result.success);
+          toastDisplay(result.message, !result.success && 'error');
         }
 
         return result;
@@ -48,6 +49,50 @@ const UserBooking = () => {
     },
     [logout, navigate]
   );
+
+  const handleCancelBooking = (id) => {
+    const result = handleFetch("POST", `/cancelbooking/${id}`);
+    if (result.success) {
+      setSelectedBooking(null);
+    }
+  };
+
+  useEffect(() => {
+    handleFetch("GET", "/getuserbooking");
+
+    // Animations
+    gsap.fromTo(
+      ".booking-list-item",
+      { opacity: 0, y: 20 },
+      {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        stagger: 0.2,
+        ease: "power3.out",
+      }
+    );
+
+    if (selectedBooking) {
+      gsap.fromTo(
+        ".booking-detail",
+        { opacity: 0, y: 20 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.6,
+          stagger: 0.2,
+          ease: "power3.out",
+        }
+      );
+    }
+
+    gsap.fromTo(
+      ".cancel-button",
+      { scale: 0.9, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.6, ease: "power3.out" }
+    );
+  }, [selectedBooking]);
 
   useEffect(() => {
     handleFetch("GET", "/getuserbooking");
@@ -61,13 +106,13 @@ const UserBooking = () => {
 
       <div className="w-full max-w-6xl flex gap-8">
         {/* List of Bookings */}
-        <div className="w-1/3 bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 overflow-y-auto max-h-[600px]">
+        <div className="w-1/3 bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 h-56 overflow-y-auto">
           <h2 className="text-xl font-bold mb-4">Select a Booking</h2>
           <ul>
             {data.map((booking) => (
               <li
                 key={booking._id}
-                className={`p-3 mb-3 rounded-lg cursor-pointer ${
+                className={`booking-list-item p-3 mb-3 rounded-lg cursor-pointer ${
                   selectedBooking?._id === booking._id
                     ? "bg-blue-500 text-white"
                     : "bg-gray-700 text-gray-300"
@@ -86,6 +131,7 @@ const UserBooking = () => {
           </ul>
         </div>
 
+        {/* Booking Details */}
         <div className="w-2/3 bg-gradient-to-r from-gray-800 via-gray-900 to-black p-6 rounded-lg shadow-lg border border-gray-700">
           {selectedBooking ? (
             <div>
@@ -93,30 +139,29 @@ const UserBooking = () => {
                 Booking Details: {selectedBooking.ticketId}
               </h2>
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="booking-detail">
                   <p className="text-lg font-semibold text-gray-300">
                     <span className="material-icons text-blue-400 align-middle mr-2">
                       airplanemode_active
                     </span>
                     Flight Number:
                     <span className="text-white font-bold ml-2">
-                      
                       {selectedBooking.flights?.flightNumber || "N/A"}
                     </span>
                   </p>
                 </div>
-                <div>
+                <div className="booking-detail">
                   <p className="text-lg font-semibold text-gray-300">
                     <span className="material-icons text-blue-400 align-middle mr-2">
                       location_on
                     </span>
                     Destination:
                     <span className="text-white font-bold ml-2">
-                      {selectedBooking.flights.route?.destination || "N/A"}
+                      {selectedBooking.flights.route?.destination?.city || "N/A"}
                     </span>
                   </p>
                 </div>
-                <div>
+                <div className="booking-detail">
                   <p className="text-lg font-semibold text-gray-300">
                     <span className="material-icons text-blue-400 align-middle mr-2">
                       schedule
@@ -129,7 +174,7 @@ const UserBooking = () => {
                     </span>
                   </p>
                 </div>
-                <div>
+                <div className="booking-detail">
                   <p className="text-lg font-semibold text-gray-300">
                     <span className="material-icons text-blue-400 align-middle mr-2">
                       event_seat
@@ -140,7 +185,7 @@ const UserBooking = () => {
                     </span>
                   </p>
                 </div>
-                <div>
+                <div className="booking-detail">
                   <p className="text-lg font-semibold text-gray-300">
                     <span className="material-icons text-blue-400 align-middle mr-2">
                       confirmation_number
@@ -151,7 +196,7 @@ const UserBooking = () => {
                     </span>
                   </p>
                 </div>
-                <div>
+                <div className="booking-detail">
                   <p className="text-lg font-semibold text-gray-300">
                     Total Price:
                     <span className="text-white font-bold ml-2">
@@ -159,7 +204,7 @@ const UserBooking = () => {
                     </span>
                   </p>
                 </div>
-                <div className="col-span-2">
+                <div className="booking-detail">
                   <p className="text-lg font-semibold text-gray-300">
                     <span className="material-icons text-blue-400 align-middle mr-2">
                       calendar_today
@@ -170,7 +215,36 @@ const UserBooking = () => {
                     </span>
                   </p>
                 </div>
+                <div className="booking-detail">
+                  <p className="text-lg font-semibold text-gray-300">
+                    <span className="material-icons text-blue-400 align-middle mr-2">
+                      payment
+                    </span>
+                    Payment Status:
+                    <span
+                      className={`ml-2 font-bold ${
+                        selectedBooking.paymentStatus === "Completed"
+                          ? "text-green-500"
+                          : selectedBooking.paymentStatus === "Pending"
+                          ? "text-yellow-500"
+                          : "text-red-500"
+                      }`}
+                    >
+                      {selectedBooking.paymentStatus}
+                    </span>
+                  </p>
+                </div>
               </div>
+              {selectedBooking.paymentStatus !== 'Cancelled' && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    className="cancel-button w-32 py-3 bg-red-600 text-white font-bold rounded-lg shadow-lg hover:bg-red-700 transition duration-200"
+                    onClick={() => handleCancelBooking(selectedBooking._id)}
+                  >
+                    Cancel Booking
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-lg text-gray-400 text-center">
